@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="ja" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>劇場別ダッシュボード</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        /* Interフォントの読み込み */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+        }
+        .dashboard-card {
+            background-color: white;
+            border-radius: 0.75rem; /* rounded-xl */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* shadow-lg */
+            padding: 1.5rem; /* p-6 */
+            transition: background-color 0.2s;
+        }
+        .section-title {
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: 700; /* font-bold */
+            margin-bottom: 1.5rem; /* mb-6 */
+            color: #1f2937; /* gray-800 */
+        }
+        .kpi-title {
+            font-weight: 500; /* font-medium */
+            color: #4b5563; /* gray-600 */
+        }
+        .kpi-value {
+            font-size: 2.25rem; /* text-4xl */
+            font-weight: 700; /* font-bold */
+            color: #111827; /* gray-900 */
+        }
+        .kpi-trend-button {
+            background-color: #f3f4f6; /* gray-100 */
+            color: #3b82f6; /* blue-600 */
+            padding: 0.25rem 0.75rem; /* px-3 py-1 */
+            border-radius: 9999px; /* rounded-full */
+            font-size: 0.875rem; /* text-sm */
+            font-weight: 500; /* font-medium */
+            transition: background-color 0.2s;
+        }
+        .kpi-trend-button:hover {
+            background-color: #e5e7eb; /* gray-200 */
+        }
+        /* アクティブなKPIカードの背景色 */
+        .active-kpi-card {
+            background-color: #fefce8; /* Tailwind yellow-50 */
+        }
+        /* トグルボタンのスタイル */
+        .active-toggle-btn {
+            background-color: white;
+            color: #1f2937; /* gray-800 */
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+        .inactive-toggle-btn {
+            background-color: transparent;
+            color: #6b7280; /* gray-500 */
+        }
+        .inactive-toggle-btn:hover {
+            color: #1f2937; /* gray-800 */
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+
+    <!-- ヘッダー (フィルター) -->
+    <header class="sticky top-4 md:top-8 z-50 bg-white p-4 md:p-6 rounded-xl shadow-md mb-4 md:mb-8">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">
+                劇場別ダッシュボード
+            </h1>
+
+            <div class="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                <!-- フィルターコンテナの幅を調整 -->
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label for="startDate" class="text-sm font-medium text-gray-700 whitespace-nowrap">集計期間:</label>
+                    <input type="date" id="startDate" name="startDate" value="2024-01-01" class="w-full md:w-auto p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+                <span class="hidden sm:block text-gray-500">-</span>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label for="endDate" class="text-sm font-medium text-gray-700 whitespace-nowrap sr-only sm:not-sr-only">終了:</label>
+                    <input type="date" id="endDate" name="endDate" value="2025-12-31" class="w-full md:w-auto p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                </div>
+
+                <!-- ユーザー属性フィルター -->
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label for="userSegment" class="text-sm font-medium text-gray-700 whitespace-nowrap sr-only sm:not-sr-only">属性:</label>
+                    <select id="userSegment" name="userSegment" class="w-full md:w-auto p-2 border border-gray-300 rounded-lg shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">全ユーザー</option>
+                        <option value="male">男性</option>
+                        <option value="female">女性</option>
+                        <option value="core">コア層</option>
+                        <option value="light">ライト層</option>
+                    </select>
+                </div>
+
+                <button id="applyFilter" class="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition duration-200">
+                    適用
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto">
+        <!-- KPIサマリー -->
+        <section id="kpi" class="mb-8">
+            <h2 class="section-title">KPIサマリー</h2>
+            <div id="kpiCards" class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- アンケート回答数 -->
+                <div id="kpiCardResponseCount" class="dashboard-card kpi-card flex flex-col justify-between h-40">
+                    <span class="kpi-title">アンケート回答数</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiResponseCount" class="kpi-value">1,850</span>
+                        <span class="font-medium text-gray-500">件</span>
+                    </div>
+                    <button id="btnShowResponseCountTrend" class="kpi-trend-button self-start">推移グラフ</button>
+                </div>
+
+                <!-- 劇場 満足度 -->
+                <div id="kpiCardSatisfaction" class="dashboard-card kpi-card flex flex-col justify-between h-40">
+                    <span class="kpi-title">劇場 満足度</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiSatisfaction" class="kpi-value">8.2</span>
+                        <span class="font-medium text-gray-500">点</span>
+                    </div>
+                    <button id="btnShowSatTrend" class="kpi-trend-button self-start">推移グラフ</button>
+                </div>
+
+                <!-- 劇場 再来場意向 -->
+                <div id="kpiCardRevisit" class="dashboard-card kpi-card flex flex-col justify-between h-40">
+                    <span class="kpi-title">劇場 再来場意向</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiRevisit" class="kpi-value">68.3</span>
+                        <span class="font-medium text-gray-500">%</span>
+                    </div>
+                    <button id="btnShowRevisitTrend" class="kpi-trend-button self-start">推移グラフ</button>
+                </div>
+
+                <!-- 飲食購入率 -->
+                <div id="kpiCardFood" class="dashboard-card kpi-card flex flex-col justify-between h-40">
+                    <span class="kpi-title">飲食購入率</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiFood" class="kpi-value">48.2</span>
+                        <span class="font-medium text-gray-500">%</span>
+                    </div>
+                    <button id="btnShowFoodTrend" class="kpi-trend-button self-start">推移グラフ</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- KPI時系列推移 -->
+        <section id="kpi-trend" class="mb-8 dashboard-card">
+            <h3 id="kpiTrendChartTitle" class="text-lg font-semibold mb-4">KPI時系列推移 (劇場 満足度 vs 業界標準)</h3>
+            <div class="h-96">
+                <canvas id="kpiTrendChart"></canvas>
+            </div>
+        </section>
+
+        <!-- 来場者プロフィール -->
+        <section id="profile" class="mb-8">
+            <h2 class="section-title">来場者プロフィール</h2>
+
+            <!-- プロフィールKPI (上段) -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <!-- 休眠・新規来場比率 -->
+                <div class="dashboard-card h-40 flex flex-col justify-between">
+                    <span class="kpi-title">休眠・新規来場比率</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiNewDormant" class="kpi-value">25.3</span>
+                        <span class="font-medium text-gray-500">%</span>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <span id="kpiNew">新規 15.2%</span> / <span id="kpiDormant">休眠 10.1%</span>
+                    </div>
+                </div>
+                <!-- 高頻度来場比率 -->
+                <div class="dashboard-card h-40 flex flex-col justify-between">
+                    <span class="kpi-title">高頻度来場比率 (コア層)</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiHighFrequency" class="kpi-value">22.5</span>
+                        <span class="font-medium text-gray-500">%</span>
+                    </div>
+                    <div class="h-5"></div> <!-- スペーサー -->
+                </div>
+                <!-- おひとりさま比率 -->
+                <div class="dashboard-card h-40 flex flex-col justify-between">
+                    <span class="kpi-title">「おひとりさま」比率</span>
+                    <div class="flex items-baseline gap-2">
+                        <span id="kpiSoloVisitor" class="kpi-value">38.0</span>
+                        <span class="font-medium text-gray-500">%</span>
+                    </div>
+                    <div class="h-5"></div> <!-- スペーサー -->
+                </div>
+            </div>
+
+            <!-- 性年代とドーナツグラフ -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- 性年代 (縦棒グラフ) -->
+                <div class="dashboard-card lg:col-span-2">
+                    <h3 class="text-lg font-semibold mb-4">性年代 構成比</h3>
+                    <div class="h-[600px]">
+                        <canvas id="genderAgeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- 鑑賞頻度 -->
+                    <div class="dashboard-card h-80">
+                        <h3 class="text-lg font-semibold mb-4">鑑賞頻度</h3>
+                        <div class="h-56">
+                            <canvas id="frequencyChart"></canvas>
+                        </div>
+                    </div>
+                    <!-- 鑑賞形態 -->
+                    <div class="dashboard-card h-80">
+                        <h3 class="text-lg font-semibold mb-4">鑑賞形態</h3>
+                        <div class="h-56">
+                            <canvas id="companionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                <!-- 来場者 居住地 (紫系) -->
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold mb-4">来場者 居住地 (商圏)</h3>
+                    <div class="h-96">
+                        <canvas id="locationChart"></canvas>
+                    </div>
+                </div>
+                <!-- 来場手段 & チケット購入 -->
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold mb-4">来場手段 & チケット購入方法</h3>
+                    <div class="h-96">
+                        <canvas id="methodChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 劇場評価 (詳細) -->
+        <section id="details" class="mb-8">
+            <h2 class="section-title">劇場評価 (詳細)</h2>
+            <!-- 満足度分布・推移グラフ (横幅いっぱい) -->
+            <div class="dashboard-card">
+                <!-- ヘッダーにトグルボタンを追加 -->
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="satisfactionDetailTitle" class="text-lg font-semibold">劇場 満足度 分布 (0-10点)</h3>
+                    <div class="flex items-center gap-2 rounded-lg bg-gray-100 p-1">
+                        <button id="btnShowDist" class="px-3 py-1 text-sm font-medium rounded-md active-toggle-btn">
+                            分布
+                        </button>
+                        <button id="btnShowTrendStack" class="px-3 py-1 text-sm font-medium rounded-md inactive-toggle-btn">
+                            推移
+                        </button>
+                    </div>
+                </div>
+                <!-- グラフコンテナ -->
+                <div id="satisfactionDistributionContainer" class="h-[500px]">
+                    <canvas id="satisfactionDistributionChart"></canvas>
+                </div>
+                <div id="satisfactionTrendStackContainer" class="h-[500px]" style="display: none;">
+                    <canvas id="satisfactionTrendStackChart"></canvas>
+                </div>
+            </div>
+
+            <!-- フリーコメント詳細 -->
+            <div class="dashboard-card mt-6">
+                <h3 class="text-lg font-semibold mb-4">フリーコメント詳細 (低評価)</h3>
+                <div class="h-96 overflow-y-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">評価項目</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">スコア</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">コメント</th>
+                            </tr>
+                        </thead>
+                        <tbody id="commentsTable" class="bg-white divide-y divide-gray-200">
+                            <!-- 10件のコメントがJSで挿入されます -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 作品 × 劇場 分析 -->
+        <section id="works" class="mb-8">
+            <h2 class="section-title">作品 × 劇場 分析</h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- 作品別 劇場満足度 -->
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold mb-4">作品別 劇場満足度 (Top 10)</h3>
+                    <div class="h-96">
+                        <canvas id="satByWorkChart"></canvas>
+                    </div>
+                </div>
+                <!-- 作品満足度 vs 劇場満足度 -->
+                <div class="dashboard-card">
+                    <h3 class="text-lg font-semibold mb-4">作品満足度 vs 劇場満足度</h3>
+                    <div class="h-96">
+                        <canvas id="satScatterChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide-icons"></script>
+
+    <!-- グラフ描画スクリプト -->
+    <script>
+        // グラフが描画されない問題を避けるため、DOMContentLoadedで実行
+        document.addEventListener('DOMContentLoaded', () => {
+
+            // Lucide アイコンの初期化
+            try {
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            } catch (e) {
+                console.error("Lucide icons initialization failed:", e);
+            }
+
+            // Chart.jsのグローバル設定
+            Chart.defaults.font.family = "'Inter', 'Noto Sans JP', sans-serif";
+            Chart.defaults.color = '#4b5563'; // gray-600
+            Chart.defaults.borderColor = '#e5e7eb'; // gray-200
+
+            // ダミーデータ
+            const dummyData = {
+                'all': {
+                    kpi: {
+                        responseCount: 1850, // アンケート回答数
+                        satisfaction: 8.2, // 10点満点平均
+                        revisit: 68.3,
+                        foodPurchaseRate: 48.2
+                    },
+                    timeSeries: {
+                        responseCount: [1500, 1550, 1600, 1580, 1620, 1650, 1700, 1680, 1720, 1750, 1780, 1750, 1800, 1820, 1850, 1800, 1780, 1830, 1850, 1880, 1900, 1850, 1800, 1850],
+                        // 10点満点平均の推移
+                        satisfaction: [8.0, 8.1, 8.0, 8.2, 8.1, 8.3, 8.2, 8.3, 8.4, 8.3, 8.5, 8.4, 8.1, 8.2, 8.3, 8.1, 8.0, 8.2, 8.3, 8.4, 8.3, 8.1, 8.2, 8.2],
+                        // 業界標準の満足度推移
+                        industrySatisfaction: [7.8, 7.8, 7.9, 7.9, 8.0, 8.0, 8.1, 8.1, 8.2, 8.2, 8.2, 8.3, 8.0, 8.1, 8.1, 8.2, 8.2, 8.3, 8.3, 8.3, 8.4, 8.4, 8.4, 8.5],
+                        revisit: [65.0, 65.5, 66.0, 65.8, 66.5, 66.8, 67.0, 66.9, 67.2, 67.5, 67.8, 67.5, 66.0, 66.2, 66.5, 67.0, 67.3, 67.8, 68.0, 68.2, 68.0, 67.8, 68.1, 68.3],
+                        foodPurchaseRate: [45.0, 45.5, 46.0, 45.8, 46.2, 46.5, 47.0, 46.8, 47.2, 47.5, 47.8, 47.5, 48.0, 48.2, 48.5, 48.0, 47.8, 48.3, 48.5, 48.8, 49.0, 48.5, 48.0, 48.2],
+                        labels: ['24/01', '24/02', '24/03', '24/04', '24/05', '24/06', '24/07', '24/08', '24/09', '24/10', '24/11', '24/12', '25/01', '25/02', '25/03', '25/04', '25/05', '25/06', '25/07', '25/08', '25/09', '25/10', '25/11', '25/12']
+                    },
+                    profile: {
+                        genderAge: {
+                            labels: ['10代男性', '10代女性', '20代男性', '20代女性', '30代男性', '30代女性', '40代男性', '40代女性', '50代男性', '50代女性', '60代男性', '60代女性', '70代以上男性', '70代以上女性'],
+                            data: [8, 12, 10, 15, 8, 10, 7, 8, 6, 7, 5, 4, 3, 2],
+                            colors: ['#3b82f6', '#fb7185', '#3b82f6', '#fb7185', '#3b82f6', '#fb7185', '#3b82f6', '#fb7185', '#3b82f6', '#fb7185', '#3b82f6', '#fb7185', '#3b82f6', '#fb7185']
+                        },
+                        frequency: { "コア層": 25, "ミドル層": 35, "ライト層": 40 },
+                        companion: { "ひとり": 38, "友人・知人": 25, "恋人・パートナー": 20, "家族": 15, "その他": 2 },
+                        location: { "新宿区": 20, "渋谷区": 15, "世田谷区": 12, "中野区": 10, "杉並区": 8, "練馬区": 7, "その他東京": 10, "神奈川県": 10, "埼玉県": 5, "千葉県": 3 },
+                        methods: {
+                            transport: { "電車": 60, "徒歩": 15, "車": 10, "自転車": 10, "その他": 5 },
+                            ticketing: { "オンライン": 70, "劇場窓口": 15, "自動券売機": 15 }
+                        },
+                        segments: {
+                            newVsDormant: { 'new': 15.2, 'dormant': 10.1 },
+                            highFrequency: 22.5,
+                            soloVisitor: 38.0
+                        }
+                    },
+                    details: {
+                        // 0点から10点までの回答数
+                        satisfactionDistribution: {
+                            labels: ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+                            data: [15, 10, 15, 20, 30, 40, 70, 150, 250, 450, 800], // 合計1850件
+                            colors: [
+                                '#ef4444', '#ef4444', '#ef4444', '#ef4444', '#ef4444', '#ef4444', '#ef4444', // 批判者 (0-6)
+                                '#9ca3af', '#9ca3af', // 中立者 (7-8)
+                                '#22c55e', '#22c55e'  // 推奨者 (9-10)
+                            ]
+                        },
+                        // 満足度構成比の推移 (積み上げグラフ用)
+                        satisfactionTrendStack: {
+                            labels: ['24/07', '24/08', '24/09', '24/10', '24/11', '24/12', '25/01', '25/02', '25/03', '25/04', '25/05', '25/06'],
+                            detractor: [10, 10, 9, 8, 8, 7, 8, 7, 7, 6, 6, 5], // 批判者 (0-6)
+                            neutral: [20, 19, 18, 18, 17, 17, 16, 15, 15, 14, 13, 12], // 中立者 (7-8)
+                            promoter: [70, 71, 73, 74, 75, 76, 76, 78, 78, 80, 81, 83] // 推奨者 (9-10)
+                        },
+                        comments: [
+                            { category: "清潔さ", score: 1, text: "ポップコーンが床に散らばっていた。前の回が終わった後の清掃が不十分だと感じる。" },
+                            { category: "スタッフ", score: 2, text: "発券機の使い方がわからず困っていたが、近くのスタッフは私語に夢中だった。" },
+                            { category: "音響", score: 1, text: "音が割れていてセリフが聞き取りづらかった。特に低音がひどい。" },
+                            { category: "コンセッション", score: 2, text: "ドリンクの値段が高すぎる。もう少し手頃な価格設定にしてほしい。" },
+                            { category: "座席", score: 2, text: "シートが少し汚れていて、前の人のゴミが残っていた。" },
+                            { category: "ロビー", score: 3, text: "上映開始前に待つスペースが狭く、いつも混雑している。" },
+                            { category: "清潔さ", score: 1, text: "トイレの匂いが気になった。もう少し頻繁に清掃してほしい。" },
+                            { category: "スタッフ", score: 2, text: "入場時の案内が分かりにくく、どのシアターに行けばいいか迷った。" },
+                            { category: "音響", score: 2, text: "CMの音量が大きすぎて不快だった。本編との差がありすぎる。" },
+                            { category: "コンセッション", score: 3, text: "ポップコーンの味が薄かった。塩が均一にかかっていない。" }
+                        ]
+                    },
+                    works: {
+                        satByWork: {
+                            labels: ["作品A", "作品B", "作品C", "作品D", "作品E", "作品F", "作品G", "作品H", "作品I", "作品J"],
+                            data: [8.8, 8.5, 8.2, 8.0, 7.9, 7.8, 7.5, 7.2, 7.0, 6.8]
+                        },
+                        satScatter: [
+                            { x: 4.5, y: 4.3, label: "作品A" }, { x: 4.2, y: 4.1, label: "作品B" },
+                            { x: 3.0, y: 2.5, label: "作品C" }, { x: 4.0, y: 4.0, label: "作品D" },
+                            { x: 3.8, y: 3.9, label: "作品E" }, { x: 4.8, y: 4.5, label: "作品F" },
+                            { x: 3.5, y: 3.0, label: "作品G" }
+                        ]
+                    }
+                }
+            };
+
+            // グラフインスタンスを保持するオブジェクト
+            const charts = {};
+            const kpiCardIds = ['kpiCardResponseCount', 'kpiCardSatisfaction', 'kpiCardRevisit', 'kpiCardFood'];
+
+            // --- グラフ描画関数 ---
+
+            // KPIカードの更新
+            function updateKpiCards(data) {
+                document.getElementById('kpiResponseCount').textContent = data.kpi.responseCount.toLocaleString();
+                document.getElementById('kpiSatisfaction').textContent = data.kpi.satisfaction.toFixed(1);
+                document.getElementById('kpiRevisit').textContent = data.kpi.revisit.toFixed(1);
+                document.getElementById('kpiFood').textContent = data.kpi.foodPurchaseRate.toFixed(1);
+
+                const newDormantTotal = (data.profile.segments.newVsDormant.new + data.profile.segments.newVsDormant.dormant).toFixed(1);
+                document.getElementById('kpiNewDormant').textContent = newDormantTotal;
+                document.getElementById('kpiNew').textContent = `新規 ${data.profile.segments.newVsDormant.new.toFixed(1)}%`;
+                document.getElementById('kpiDormant').textContent = `休眠 ${data.profile.segments.newVsDormant.dormant.toFixed(1)}%`;
+
+                document.getElementById('kpiHighFrequency').textContent = data.profile.segments.highFrequency.toFixed(1);
+                document.getElementById('kpiSoloVisitor').textContent = data.profile.segments.soloVisitor.toFixed(1);
+            }
+
+            // KPI時系列グラフ (第2Y軸対応)
+            function renderKpiTrendChart(datasets, title, activeCardId) {
+                const ctx = document.getElementById('kpiTrendChart').getContext('2d');
+                if (charts.kpiTrend) charts.kpiTrend.destroy();
+
+                document.getElementById('kpiTrendChartTitle').textContent = `KPI時系列推移 (${title})`;
+
+                // アクティブなKPIカードの背景色を更新
+                kpiCardIds.forEach(id => {
+                    document.getElementById(id).classList.remove('active-kpi-card');
+                });
+                if (activeCardId) {
+                    document.getElementById(activeCardId).classList.add('active-kpi-card');
+                }
+
+                const displayY1 = datasets.some(d => d.yAxisID === 'y1');
+
+                charts.kpiTrend = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dummyData.all.timeSeries.labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                beginAtZero: false,
+                                grid: { color: '#f3f4f6' },
+                                suggestedMin: 7.0,
+                                suggestedMax: 9.0
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: displayY1,
+                                position: 'right',
+                                beginAtZero: false,
+                                grid: { drawOnChartArea: false },
+                                suggestedMin: 1000,
+                                suggestedMax: 2000
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 12
+                                }
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.dataset.label}: ${context.raw.toFixed(1)}`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 性年代 構成比 (縦棒グラフ)
+            function renderGenderAgeChart(data) {
+                const ctx = document.getElementById('genderAgeChart').getContext('2d');
+                if (charts.genderAge) charts.genderAge.destroy();
+                charts.genderAge = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '構成比',
+                            data: data.data,
+                            backgroundColor: data.colors,
+                            borderColor: data.colors,
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: {
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                }
+                            },
+                            y: {
+                                grid: { color: '#f3f4f6' },
+                                ticks: {
+                                    callback: (value) => `${value}%`
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${context.raw.toFixed(1)}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 鑑賞頻度 (ドーナツ)
+            function renderFrequencyChart(data) {
+                const ctx = document.getElementById('frequencyChart').getContext('2d');
+                if (charts.frequency) charts.frequency.destroy();
+                charts.frequency = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            data: Object.values(data),
+                            backgroundColor: ['#1d4ed8', '#3b82f6', '#93c5fd'], // 濃い青, 青, 薄い青
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 15 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${context.raw}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 鑑賞形態 (ドーナツ・紫系)
+            function renderCompanionChart(data) {
+                const ctx = document.getElementById('companionChart').getContext('2d');
+                if (charts.companion) charts.companion.destroy();
+                charts.companion = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            data: Object.values(data),
+                            backgroundColor: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe', '#ede9fe'], // 紫系
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '60%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 15 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${context.raw}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 来場者 居住地 (横棒グラフ・紫系)
+            function renderLocationChart(data) {
+                const ctx = document.getElementById('locationChart').getContext('2d');
+                if (charts.location) charts.location.destroy();
+                charts.location = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(data),
+                        datasets: [{
+                            label: '構成比',
+                            data: Object.values(data),
+                            backgroundColor: '#8b5cf6', // 紫系
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y', // 横棒グラフ
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { grid: { color: '#f3f4f6' } },
+                            y: { grid: { display: false } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${context.raw}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 来場手段 & チケット購入 (積み上げ横棒)
+            function renderMethodChart(data) {
+                const ctx = document.getElementById('methodChart').getContext('2d');
+                if (charts.method) charts.method.destroy();
+
+                const transportData = data.transport;
+                const ticketingData = data.ticketing;
+
+                charts.method = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['来場手段', 'チケット購入'],
+                        datasets: [
+                            // 来場手段データ
+                            ...Object.keys(transportData).map((key, index) => ({
+                                label: key,
+                                data: [transportData[key], 0],
+                                backgroundColor: ['#fb923c', '#fdba74', '#fed7aa', '#fee6c3', '#fff7ed'][index % 5],
+                                stack: 'transport'
+                            })),
+                            // チケット購入データ
+                            ...Object.keys(ticketingData).map((key, index) => ({
+                                label: key,
+                                data: [0, ticketingData[key]],
+                                backgroundColor: ['#60a5fa', '#93c5fd', '#bfdbfe'][index % 3],
+                                stack: 'ticketing'
+                            }))
+                        ]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true, grid: { color: '#f3f4f6' }, ticks: { callback: (value) => `${value}%` } },
+                            y: { stacked: true, grid: { display: false } }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 15 } },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.dataset.label}: ${context.raw}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 劇場 満足度 分布 (NPS風)
+            function renderSatisfactionDistributionChart(data) {
+                const ctx = document.getElementById('satisfactionDistributionChart').getContext('2d');
+                if (charts.satisfactionDistribution) charts.satisfactionDistribution.destroy();
+                charts.satisfactionDistribution = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '回答数',
+                            data: data.data,
+                            backgroundColor: data.colors,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        // 棒グラフの幅を調整
+                        barPercentage: 0.8,
+                        categoryPercentage: 0.9,
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                title: { display: true, text: '満足度スコア (0-10点)' }
+                            },
+                            y: {
+                                grid: { color: '#f3f4f6' },
+                                title: { display: true, text: '回答者数' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}点: ${context.raw.toLocaleString()}人`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 劇場 満足度 推移 (積み上げ)
+            function renderSatisfactionTrendStackChart(data) {
+                const ctx = document.getElementById('satisfactionTrendStackChart').getContext('2d');
+                if (charts.satisfactionTrendStack) charts.satisfactionTrendStack.destroy();
+
+                // NPS分布グラフの色定義を流用
+                const colors = dummyData.all.details.satisfactionDistribution.colors;
+
+                charts.satisfactionTrendStack = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [
+                            {
+                                label: '批判者 (0-6点)',
+                                data: data.detractor,
+                                backgroundColor: colors[0], // 赤
+                                stack: 'trend'
+                            },
+                            {
+                                label: '中立者 (7-8点)',
+                                data: data.neutral,
+                                backgroundColor: colors[7], // グレー
+                                stack: 'trend'
+                            },
+                            {
+                                label: '推奨者 (9-10点)',
+                                data: data.promoter,
+                                backgroundColor: colors[9], // 緑
+                                stack: 'trend'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                stacked: true,
+                                grid: { display: false },
+                                title: { display: true, text: '月別' }
+                            },
+                            y: {
+                                stacked: true,
+                                grid: { color: '#f3f4f6' },
+                                title: { display: true, text: '構成比 (%)' },
+                                ticks: {
+                                    callback: (value) => `${value}%`
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: { position: 'bottom' },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.dataset.label}: ${context.raw}%`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // フリーコメント詳細
+            function renderCommentsTable(data) {
+                const tableBody = document.getElementById('commentsTable');
+                tableBody.innerHTML = ''; // クリア
+                data.forEach(comment => {
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${comment.category}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm ${comment.score <= 2 ? 'text-red-600' : 'text-gray-500'}">${comment.score}</td>
+                            <td class="px-6 py-4 whitespace-normal text-sm text-gray-700">${comment.text}</td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            }
+
+            // 作品別 劇場満足度 (横棒)
+            function renderSatByWorkChart(data) {
+                const ctx = document.getElementById('satByWorkChart').getContext('2d');
+                if (charts.satByWork) charts.satByWork.destroy();
+                charts.satByWork = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.labels,
+                        datasets: [{
+                            label: '劇場満足度',
+                            data: data.data,
+                            backgroundColor: '#3b82f6',
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                grid: { color: '#f3f4f6' },
+                                suggestedMin: 6.0,
+                                suggestedMax: 9.0
+                            },
+                            y: { grid: { display: false } }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => `${context.label}: ${context.raw.toFixed(1)}点`
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // 作品満足度 vs 劇場満足度 (散布図)
+            function renderSatScatterChart(data) {
+                const ctx = document.getElementById('satScatterChart').getContext('2d');
+                if (charts.satScatter) charts.satScatter.destroy();
+                charts.satScatter = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: '作品',
+                            data: data,
+                            backgroundColor: '#3b82f6'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: {
+                                title: { display: true, text: '作品満足度' },
+                                min: 0, max: 5,
+                                grid: { color: '#f3f4f6' }
+                            },
+                            y: {
+                                title: { display: true, text: '劇場満足度' },
+                                min: 0, max: 5,
+                                grid: { color: '#f3f4f6' }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const d = context.raw;
+                                        return `${d.label}: (作品 ${d.x}, 劇場 ${d.y})`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+
+            // --- デフォルトのデータセット定義 ---
+
+            // 満足度 (デフォルト) + 業界標準
+            const satisfactionTrendDataset = [
+                {
+                    label: '劇場 満足度',
+                    data: dummyData.all.timeSeries.satisfaction,
+                    borderColor: '#3b82f6', // 青
+                    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                    fill: false,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                },
+                {
+                    label: '業界標準',
+                    data: dummyData.all.timeSeries.industrySatisfaction,
+                    borderColor: '#d1d5db', // 薄い灰色
+                    backgroundColor: 'rgba(209, 213, 219, 0.2)',
+                    fill: false,
+                    tension: 0.1,
+                    borderDash: [5, 5], // 破線
+                    yAxisID: 'y'
+                }
+            ];
+
+            // アンケート回答数
+            const responseCountTrendDataset = [
+                {
+                    label: 'アンケート回答数',
+                    data: dummyData.all.timeSeries.responseCount,
+                    borderColor: '#6b7280', // グレー
+                    backgroundColor: 'rgba(107, 114, 128, 0.2)',
+                    fill: false,
+                    tension: 0.1,
+                    yAxisID: 'y1' // 第2Y軸
+                }
+            ];
+
+            // 再来場意向
+            const revisitTrendDataset = [
+                {
+                    label: '再来場意向',
+                    data: dummyData.all.timeSeries.revisit,
+                    borderColor: '#16a34a', // 緑
+                    backgroundColor: 'rgba(22, 163, 74, 0.2)',
+                    fill: false,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                }
+            ];
+
+            // 飲食購入率
+            const foodTrendDataset = [
+                {
+                    label: '飲食購入率',
+                    data: dummyData.all.timeSeries.foodPurchaseRate,
+                    borderColor: '#f59e0b', // 黄色
+                    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                    fill: false,
+                    tension: 0.1,
+                    yAxisID: 'y'
+                }
+            ];
+
+            // --- ダッシュボード更新関数 ---
+            function updateDashboard() {
+                // (現在は 'all' データ固定)
+                const data = dummyData.all;
+
+                // KPIカード
+                updateKpiCards(data);
+
+                // KPI時系列 (デフォルトは満足度 vs 業界標準)
+                renderKpiTrendChart(satisfactionTrendDataset, "劇場 満足度 vs 業界標準", 'kpiCardSatisfaction');
+
+                // プロフィール
+                renderGenderAgeChart(data.profile.genderAge);
+                renderFrequencyChart(data.profile.frequency);
+                renderCompanionChart(data.profile.companion);
+                renderLocationChart(data.profile.location);
+                renderMethodChart(data.profile.methods);
+
+                // 劇場評価 (満足度分布と推移の両方を描画)
+                renderSatisfactionDistributionChart(data.details.satisfactionDistribution);
+                renderSatisfactionTrendStackChart(data.details.satisfactionTrendStack);
+                renderCommentsTable(data.details.comments);
+
+                // 作品分析
+                renderSatByWorkChart(data.works.satByWork);
+                renderSatScatterChart(data.works.satScatter);
+            }
+
+            // --- イベントリスナー ---
+            function initializeEventListeners() {
+                // 適用ボタン
+                document.getElementById('applyFilter').addEventListener('click', () => {
+                    // (フィルターロジックは未実装)
+                    updateDashboard();
+                });
+
+                // アンケート回答数
+                document.getElementById('btnShowResponseCountTrend').addEventListener('click', () => {
+                    renderKpiTrendChart(responseCountTrendDataset, "アンケート回答数", 'kpiCardResponseCount');
+                });
+
+                // 劇場 満足度 (vs 業界標準)
+                document.getElementById('btnShowSatTrend').addEventListener('click', () => {
+                    renderKpiTrendChart(satisfactionTrendDataset, "劇場 満足度 vs 業界標準", 'kpiCardSatisfaction');
+                });
+
+                // 再来場意向
+                document.getElementById('btnShowRevisitTrend').addEventListener('click', () => {
+                    renderKpiTrendChart(revisitTrendDataset, "再来場意向", 'kpiCardRevisit');
+                });
+
+                // 飲食購入率
+                document.getElementById('btnShowFoodTrend').addEventListener('click', () => {
+                    renderKpiTrendChart(foodTrendDataset, "飲食購入率", 'kpiCardFood');
+                });
+
+                // 劇場評価セクションのトグルボタン
+                const btnShowDist = document.getElementById('btnShowDist');
+                const btnShowTrendStack = document.getElementById('btnShowTrendStack');
+                const distContainer = document.getElementById('satisfactionDistributionContainer');
+                const trendStackContainer = document.getElementById('satisfactionTrendStackContainer');
+                const detailTitle = document.getElementById('satisfactionDetailTitle');
+
+                btnShowDist.addEventListener('click', () => {
+                    distContainer.style.display = 'block';
+                    trendStackContainer.style.display = 'none';
+                    btnShowDist.classList.add('active-toggle-btn');
+                    btnShowDist.classList.remove('inactive-toggle-btn');
+                    btnShowTrendStack.classList.add('inactive-toggle-btn');
+                    btnShowTrendStack.classList.remove('active-toggle-btn');
+                    detailTitle.textContent = '劇場 満足度 分布 (0-10点)';
+                });
+
+                btnShowTrendStack.addEventListener('click', () => {
+                    distContainer.style.display = 'none';
+                    trendStackContainer.style.display = 'block';
+                    btnShowTrendStack.classList.add('active-toggle-btn');
+                    btnShowTrendStack.classList.remove('inactive-toggle-btn');
+                    btnShowDist.classList.add('inactive-toggle-btn');
+                    btnShowDist.classList.remove('active-toggle-btn');
+                    detailTitle.textContent = '劇場 満足度 推移 (構成比)';
+                });
+            }
+
+            // --- 初期描画 ---
+            try {
+                updateDashboard();
+                initializeEventListeners();
+            } catch (e) {
+                console.error("Dashboard initialization failed:", e);
+                // エラーが発生した場合でも、基本的なUI（アイコンなど）の再試行を試みる
+                if (typeof lucide !== 'undefined') {
+                    lucide.createIcons();
+                }
+            }
+        }); // DOMContentLoaded 終了
+    </script>
+</body>
+</html>
